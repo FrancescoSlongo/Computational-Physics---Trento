@@ -1,2 +1,2 @@
-# Computazionale
-Repository for Project of COmputational Physics - Master's course in Trento
+# Computational Physics
+Repository for Project of Computational Physics - Master's course in Trento
