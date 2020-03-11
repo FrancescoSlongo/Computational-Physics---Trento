@@ -10,3 +10,5 @@ In order to make Armadillo work on Visual Studio:
 
 # MPI: library for running test functions in C++
 MPI https://blogs.technet.microsoft.com/windowshpc/2015/02/02/how-to-compile-and-run-a-simple-ms-mpi-program/ https://docs.microsoft.com/en-us/message-passing-interface/microsoft-mpi
+
+forse
