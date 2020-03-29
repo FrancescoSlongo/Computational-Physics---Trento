@@ -45,10 +45,10 @@ void Prop_ext(int N, double E, double h, double * y) // Algorithm that implement
 	delete[] k2;
 }
 
-void Prop_sym(int N, double E, double h, double * y) // Algorithm that implements Numerov and propagates the wave function, starting from the center and supposing a symmetric wave function
+// Algorithm that implements Numerov and propagates the wave function, starting from the center and supposing a symmetric or antisymmetric wave function 
+void Prop_as(int N, double E, char c, double h, double * y) 
 {
-	double h2;  // Auxiliary variable to save computation time
-	h2 = h*h;
+	double h2 = h*h;// Auxiliary variable to save computation time
 	
 	// I calculate k2
 	double * k2 = new double[2*N + 1]; // Value of k2
@@ -58,39 +58,16 @@ void Prop_sym(int N, double E, double h, double * y) // Algorithm that implement
 	}
 	
 	// Initial conditions
-	y[N] = 1.0;
-	y[N+1] = y[N]*(2.0 - 5.0/6.0 * h2 * k2[N]) / (2.0 + h2 / 6.0 * k2[N+1]);
-	
-	// Apply Numerov Algorithm
-	for(int i= N+1; i < 2*N; i++)
-		{
-			y[i+1] =(y[i]*(2.0 - 5.0/6.0 * h2 * k2[i]) - y[i-1]*(1.0 + h2 /12.0* k2[i-1])) / (1.0 + h2 / 12.0 * k2[i+1]);
-		}
-		
-	// Copy the mirrored part
-	for(int i= 0; i < N; i++)
-		{
-			y[i] = y[2*N-i];
-		}
-	delete[] k2;
-}
-
-void Prop_asym(int N, double E, double h, double * y) // Algorithm that implements Numerov and propagates the wave function, starting from the center and supposing a asymmetric wave function
-{
-	double h2;  // Auxiliary variable to save computation time
-	h2 = h*h;
-	
-	// I calculate k2
-	double * k2 = new double[2*N + 1]; // Value of k2
-	for(int i = N; i < 2*N+1; i++)
+	if(c == 's')
 	{
-		k2[i] = 2.0*(E - Vh((i - N)*h));
+		y[N] = 1.0;
+		y[N+1] = 1.0-h2/2.0;
+	} else if(c == 'a') 
+	{
+		y[N] = 0.0;
+		y[N+1] = h;
 	}
 	
-	// Initial conditions
-	y[N] = 0.0;
-	y[N+1] = h;
-	
 	// Apply Numerov Algorithm
 	for(int i= N+1; i < 2*N; i++)
 		{
@@ -98,10 +75,19 @@ void Prop_asym(int N, double E, double h, double * y) // Algorithm that implemen
 		}
 		
 	// Copy the mirrored part
-	for(int i= 0; i < N; i++)
+	if(c == 's')
+	{
+		for(int i= 0; i < N; i++)
 		{
 			y[i] = -y[2*N-i];
 		}
+	} else if(c == 'a')
+	{
+		for(int i= 0; i < N; i++)
+		{
+			y[i] = -y[2*N-i];
+		}
+	}
 	delete[] k2;
 }
 
@@ -110,22 +96,56 @@ double Amp(int N, double h, double * y) // Given a wave function, it calculate t
 	double A;
 	// I take the square of the wave function for each point
 	A = 0;
+	A = y[0]*y[0]+y[2*N]*y[2*N];
 	for(int m = 1; m < 2*N; m++)
 	{
-		A += y[m]*y[m];
+		if(m%2 ==1)
+		{
+			A += 4*y[m]*y[m];
+		} else {
+			A += 2*y[m]*y[m];
+		}
+		
 	}
-	A *= h;
+	A *= h/3.0;
 	// I give back the amplitude
 	return 1.0/sqrt(A);
 }
 
-void Numerov(int N, double h, double E0, double Emax, double DeltaE, void (*Prop) (int, double, double, double *)) // Method that implements the secant method with Numerov
+
+// Given a wave function, it calculate the normalization amplitude only on half of the wave function and then it multiplies for the analytical result
+double AmpHalf(int N, double h, double * y)
+{	
+	double A;
+	// I take the square of the wave function for each point
+	A = 0;
+	A = y[0]*y[0]+y[N]*y[N];
+	for(int m = 1; m < N; m++)
+	{
+		if(m%2 ==1)
+		{
+			A += 4.0*y[m]*y[m];
+		} else {
+			A += 2.0*y[m]*y[m];
+		}
+		
+	}
+	A *= h/3.0;
+	// I give back the amplitude
+	return 1.0/sqrt(2.0*A);
+}
+
+void Numerov(int N, double h, double E0, double Emax, double DeltaE, double * Esaved, int * s) // Method that implements the secant method with Numerov
 {
 	// Secant method
 	// Variables used for the secant method
 	double * y = new double[2*N + 1]; // Value of the wave function at the point xi
 	double E, E1, E2, Eaux; 
 	double y1, y2, ytmp, tmp;
+	double * Eout = new double[5];
+	// Required resolution for the secant method and maximum number of iterations
+	double resolution = 1.0e-12; 
+	int maxCyc = 1e5;
 	
 	E = E0;
 	ytmp = 0;
@@ -134,24 +154,11 @@ void Numerov(int N, double h, double E0, double Emax, double DeltaE, void (*Prop
 	int j; 	//Counter for the while cycle
 	double A; // Normalization amplitude
 	
-	// Do you want to plot the eigenfunctios?
-	char answ;
-	cout << "Do you want to print the eigenfunctions (y/n)? " ;
-	cin >> answ;
-	if(answ == 'y')
-	{
-			ofile.open("Eig_1Dh.txt");
-	}
-	
-	// Required resolution for the secant method
-	double resolution;
-	cout << "What resolution do you want for the secant method?";
-	cin >> resolution;
 	
 	// Loop for energies
 	while(E < Emax + DeltaE){
 		// I use Numerov
-		Prop(N, E, h, y);
+		Prop_ext(N, E, h, y);
 		
 		// Condition if the sign of the wavefunction changes at the extremity
 		if(y[2*N]*tmp < 0)
@@ -165,12 +172,12 @@ void Numerov(int N, double h, double E0, double Emax, double DeltaE, void (*Prop
 			j = 0;
 			
 			// Loop for secant method
-			while(j < 1000 && abs(E2 - E1) > resolution)
+			while(j < maxCyc && abs(E2 - E1) > resolution)
 			{	
 				// Formula to calculate next Energy
 				Eaux = E1 - y1 * (E2 - E1) / (y2 - y1);
 				// I use Numerov
-				Prop(N, Eaux, h, y);
+				Prop_ext(N, Eaux, h, y);
 				
 				// Condition to choose the next point
 				if(y[2*N]*y1 > 0)
@@ -188,69 +195,92 @@ void Numerov(int N, double h, double E0, double Emax, double DeltaE, void (*Prop
 					E2 = Eaux;
 					E1 = E2;
 				}
+				j++;
 			}
 			// If I have to print something I renormalize the eigenfunction
-			if(answ == 'y')
+			A = AmpHalf(N, h, y);
+			for(int m = 0; m < 2*N+1; m++)
 			{
-				A = Amp(N, h,y);
-				for(int m = 0; m < 2*N+1; m++)
-				{
-					ofile << fixed<< setprecision(5) << y[m]*A << "\t";
-				}
-				ofile << endl;
+				ofile << fixed<< setprecision(13) << y[m]*A << "\t";
 			}
-			cout <<  fixed << setprecision(8) << "Energy value is: " << Eaux << endl;
+			ofile << endl;
+			cout <<  fixed << setprecision(10) << "Energy value is: " << Eaux << endl;
+			Esaved[s[0]] = Eaux;
+			s[0] = s[0] + 1;
 		} else {
 		tmp = y[2*N];
 		}
 		E = E + DeltaE;
 	}
-	ofile.close();
 	delete[] y;
 }
 
-void Exact1D(int N, int n, double h, double * y)
+void Exact1D(int N, int n, double h, double * y, char s)
 {
-	double x = 0; // Auxiliary variable
-	if(n == 0)
+	double x; // Auxiliary variables
+	if(n == 0) // E = 0.5
 	{
 		for(int i = 0; i < 2*N+1; i++)
 		{	
 			x = (i-N)*h;
 			y[i] = 1.0/sqrt(sqrt(pi))*exp(-x*x/2);	
+			if (s == 'y')
+			{
+				ofile << fixed<< setprecision(13) << y[i] << "\t";
+			}
 		}
 	}
-	if(n == 1)
+	if(n == 1) // E = 1.5
 	{
 		for(int i = 0; i < 2*N + 1; i++)
 		{
 			x = (i-N)*h;
-			y[i] = -1/(sqrt(sqrt(pi))*sqrt(2.0))*(x)*exp(-x*x/2);	
+			y[i] = -1.0/sqrt(sqrt(pi))*sqrt(2.0)*(x)*exp(-x*x/2);	
+			if (s == 'y')
+			{
+				ofile << fixed<< setprecision(13) << y[i] << "\t";
+			}
 		}
 	}
-	if(n == 2)
+	if(n == 2) // E = 2.5
 	{
 		for(int i = 0; i < 2*N + 1; i++)
 		{
 			x = (i-N)*h;
-			y[i] = 1/(sqrt(sqrt(pi))*sqrt(2.0))*(2*x*x - 1.0)*exp(-x*x/2);	
+			y[i] = 1.0/(sqrt(sqrt(pi))*sqrt(2.0))*(2*x*x - 1.0)*exp(-x*x/2);	
+			if (s == 'y')
+			{
+				ofile << fixed<< setprecision(13) << y[i] << "\t";
+			}
 		}
 	}
-	if(n == 3)
+	if(n == 3) // E = 3.5
 	{
 		for(int i = 0; i < 2*N + 1; i++)
 		{
 			x = (i-N)*h;
-			y[i] = -1/(sqrt(sqrt(pi))*sqrt(3.0))*(2.0*x*x*x - 3.0*x)*exp(-x*x/2);	
+			y[i] = -1.0/(sqrt(sqrt(pi))*sqrt(3.0))*(2.0*x*x*x - 3.0*x)*exp(-x*x/2);	
+			if (s == 'y')
+			{
+				ofile << fixed<< setprecision(13) << y[i] << "\t";
+			}
 		}
 	}
-	if(n == 4)
+	if(n == 4) // E = 4.5
 	{
 		for(int i = 0; i < 2*N + 1; i++)
 		{
 			x = (i-N)*h;
-			y[i] = 1/(sqrt(sqrt(pi))*sqrt(16.0*6.0))*(4.0*x*x*x*x - 12.0*x*x + 3.0)*exp(-x*x/2);	
+			y[i] = 1.0/(sqrt(sqrt(pi))*sqrt(24.0))*(4.0*x*x*x*x - 12.0*x*x + 3.0)*exp(-x*x/2);	
+			if (s == 'y')
+			{
+				ofile << fixed<< setprecision(13) << y[i] << "\t";
+			}
 		}
+	}
+	if (s == 'y')
+	{
+		ofile << endl;
 	}
 }
 
@@ -258,81 +288,84 @@ int main()
 {		
 	// Variables about the discretization of the space
 	double rmax = 7.0; // Maximum point for the check of the energy
-	int N ; // Number of mesh point
-	int Nexp = 4; // Exponent for defining number of mesh points
-	double h; // Length of Delta x
-	
-	// Energy settings for our problem
-	double DeltaE = 0.1; // Difference in energy in cheching solutions
-	double E0 = 0.1; // Initial value for checking energy
-	double Emax = 0.2;  // Maximum value of the energy scanned
-
-	// I apply the method that I want
-	//int count;
-	//cout << "What kind of method do you want to apply?" << endl;
-	//cout << "Press 0 for the general one (starting from one extreme), 1 for only the symmetric eigenfunctions and 2 for the antisymmetric eigenfunctions.  ";
-	//cin >> count;
-	//if (count == 0)
-	//{
-	//	Numerov(N, h, E0, Emax, DeltaE, Prop_ext);
-	//} else if (count == 1) 
-	//{
-	//	Numerov(N, h, E0, Emax, DeltaE, Prop_sym);
-	//} else if (count == 2) 
-	//{
-	//	Numerov(N, h, E0, Emax, DeltaE, Prop_asym);
-	//} else 
-	//{
-	//	cout << "You put the wrong input!!!";
-	//}
-	
-	// Check for the errors due to the discretization and Numerov
-	double * Eexact = new double[5]; // Exact values of the energy
-	Eexact[0] = 0.5;
-	Eexact[1] = 1.5;
-	Eexact[2] = 2.5;
-	Eexact[3] = 3.5;
-	Eexact[4] = 4.5;
-	
-	int expmax = 5;   	// Maximum exponent for the 
-	double A, B; 	// Amplitude for the normalization
-	double err, errtmp; // Error between Numerov and exact wavefunction
-	
-	ofile.open("Errors_1D.txt");
-	// Loop to check the error on the wavefunction
-	for(int l = 0; l < 5; l++)
+	int N[10] = {101, 215, 465, 1001, 2155, 4641, 10001, 21545, 46417, 100001}; // Number of mesh point
+	double h[10]; // Length of Delta x
+	int MAX = 10; // Variable to change when I want to run in my PC or Mauro's one
+	for(int i = 0; i < 10; i++)
 	{
-		for(int s = 1; s <= expmax; s++)
-		{
-			N = pow(10,s);
-			h = 7.0/double(N);
-			double * y  = new double[2*N + 1]; // Array where I save Numerov
-			double * z  = new double[2*N + 1]; // Array where I save the exact solution
-			cout << "Doing Energy and Number of mesh points(exponent) equal to " << Eexact[l] << "  " << s << endl;
-			// Numerov
-			Prop_ext(N, Eexact[l], h, y);
-			A = Amp(N,h, y);
-			for(int m = 0; m < 2*N+1; m++)
-			// Exact solution
-			Exact1D(N, l, h, z);
-			B = Amp(N, h, z);
-			// I calculate the error
-			err = 1.0;
-			errtmp = 0.0;
-			
-			for(int m = 0; m < 2*N+1; m++)
-			{
-				errtmp += y[m]*z[m];
-			}
-			errtmp *= h*A*B;
-			err -= pow(errtmp,2);
-			ofile << fixed << setprecision(15) << err << "\t";
-			cout << "err:= " << err << endl;
-			delete[] y, z;
-		}
-		ofile << endl;
+		h[i] = rmax/double(N[i]);	
 	}
-	ofile.close();
+	
+	// Plotting analytical wf
+	cout << "Hey! I am plotting the analitical wavefunctions!" << endl;
+	string nameAnal1, nameAnal2;
+	nameAnal1 = "Wf_Anal_";
+	for(int i = 0; i < MAX; i++)
+	{
+		cout << "Index i :=" <<  i << endl;
+		nameAnal2 = nameAnal1;
+		ofile.open(nameAnal2.append(to_string(i)).append(".txt"));
+		double * y  = new double[2*N[i] + 1];
+		for(int j = 0; j < 5; j++)
+		{
+			Exact1D(N[i], j, h[i], y, 'y');
+		}
+		ofile.close();
+		delete[] y;
+	}
+	
+	// Energy settings for Numerov
+	double DeltaE = 0.01; // Difference in energy in cheching solutions
+	double E0 = 0.105; // Initial value for checking energy
+	double Emax = 4.6;  // Maximum value of the energy scanned
+	
+	// I keep saved the energy values that I got with Numerov
+	double * Esaved = new double [5*MAX];
+	for(int i = 0; i < 15; i++)
+	{
+		Esaved[i] = 0.0;
+	}
+	// First I check the values that I get out from the Numerov algorithm, in order to make a comparison later
+	string nameNumerov1, nameNumerov2;
+	nameNumerov1 =  "Wf_Numerov_";
+	cout << "Hey! I am doing Numerov! " << endl;
+	int * s = new int[1]; // Counter to keep track where I save energies with Numerov
+	s[0] = 0;
+	for(int i = 0; i < MAX; i++)
+	{
+		cout << "Index i :=" <<  i << endl;
+		nameNumerov2 = nameNumerov1;
+		ofile.open(nameNumerov2.append(to_string(i)).append(".txt"));
+		Numerov(N[i], h[i], E0, Emax, DeltaE, Esaved, s);
+		ofile.close();
+	}
+
+	// Setting for Numerov but exact energies
+	double Eexact[5] = {0.5, 1.5, 2.5, 3.5, 4.5}; // Exact values of the energy
+	double A; // Norm of Wf 
+	
+	cout << "Hey! I am plotting the wavefunctions with Numerov but exact energies!" << endl;
+	string nameExact1, nameExact2;
+	nameExact1 =  "Wf_Exact_";
+	for(int i = 0; i < MAX; i++)
+	{
+		cout << "Index i :=" <<  i << endl;
+		double * y  = new double[2*N[i] + 1]; // Array where I save Numerov
+		nameExact2 = nameExact1;
+		ofile.open(nameExact2.append(to_string(i)).append(".txt"));
+		for(int j = 0; j < 5; j++)
+		{
+			Prop_ext(N[i], Eexact[j], h[i], y);
+			A = AmpHalf(N[i], h[i], y);
+			for(int m = 0; m < 2*N[i]+1; m++)
+			{
+				ofile << fixed<< setprecision(13) << y[m]*A << "\t";
+			}
+			ofile << endl;
+		}
+		ofile.close();
+	}
+	
 	return 0;
 }
 
