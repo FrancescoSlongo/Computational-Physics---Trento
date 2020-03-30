@@ -8,7 +8,7 @@ double *y;
 int MESH_SIZE;
 double X_MIN = 0.4;
 double X_MAX = 7;
-double h = 1e-4;
+double h = 1e-3;
 
 inline double pot_lj(double x)
 {
