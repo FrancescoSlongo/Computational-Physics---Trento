@@ -41,12 +41,12 @@ void Prop(int N, int l, double E, double h, double * y, double (*V) (double)) //
 	
 	// Initial conditions
 	y[0] = 0.0;
-	for(int i = 1; i < N/20+1; i++)
+	for(int i = 1; i <= 570; i++)
 	{
 		y[i] = exp(-b5/pow(i*h,5));
 	}
 	// Apply Numerov Algorithm
-	for(int i= 501; i < N; i++)
+	for(int i= 571; i < N; i++)
 		{
 			y[i+1] =(y[i]*(2.0 - 5.0/6.0 * h2 * k2[i]) - y[i-1]*(1.0 + h2 /12.0* k2[i-1])) / (1.0 + h2 / 12.0 * k2[i+1]);
 		}
@@ -129,51 +129,130 @@ int main(){
 	cout << "Number of mesh points:= " << N << endl;
 	
 	// Energy settings for our problem
-	double Emax = 0.6; // Maximum value of energy scanned
-	double deltaE = 0.01; // Resolution of energy
-	double E = 0;
-	int lmax = 6; // Value of angular momentum
-	cout << "E:= " << E << endl;
-	cout << "Maximum value of the angular momentum to check:= " << lmax << endl;
+	// Normal settings
+	// First peak
+	double Emax = 0.467; // Maximum value of energy scanned
+	double deltaE = 0.001; // Resolution of energy
+	double E = 0.467;
+	//ofile.open("Cross1.txt");
 	
-	// I calculate the value of k from the energy
-	double k = sqrt(2*E/pow(hbar,2));
+	// First peak
+	//double Emax = 0.0824; // Maximum value of energy scanned
+	//double deltaE = 0.0001; // Resolution of energy
+	//double E = 0.0807;
+	//ofile.open("Cross_peak1.txt"); E = 0.0815
+	
+	// Second peak
+	//double Emax = 0.2437 ; // Maximum value of energy scanned
+	//double deltaE = 0.0001; // Resolution of energy
+	//double E = 0.241;
+	//ofile.open("Cross_peak2.txt"); E= 0.2423
+	
+	// Third peak
+	//double Emax = 0.476; // Maximum value of energy scanned
+	//double deltaE = 0.001; // Resolution of energy
+	//double E = 0.458;
+	//ofile.open("Cross_peak3.txt"); E = 0.467
+	
+	int lmax = 6; // Value of angular momentum
+	cout << "E maximum:= " << Emax << endl;
+	cout << "Maximum value of the angular momentum to check:= " << lmax << endl;
+
 	
 	// Initialization of some variables
 	double * y = new double[N + 1]; // Array where I save the wf
 	// Points where I want to calculate the Bessel and the Neumann functions
-	int n1 = N/10 *(rmax - 1);
-	int n2 = N/10*(rmax - 0.5);
-	
+	int n1 = 7860; // Corresponds to r1 = 5.5 almost
+	int n2 = 8600; // Correspond to r2 = 6 almost
+	cout << "r1 :=" << n1*h << "r2 :=" << n2*h << endl;
 	double kappa; // Variable defined to calculate phase shift
 	double deltal; // Phase shift
 	double sigmatot = 0; // Total cross section
 	
-	ofile.open("Cross.txt");
-	while(E < Emax)
+	ofile.open("LJ_EffV.txt");
+	double k2; // Value of k2
+	double h2 = h*h;
+	for(int l = 0; l < lmax+1; l++)
+		{
+		for(int i = 1; i < N+1; i++)
+		{
+			k2 = VLJ(i*h) + pow(hbar,2)/2.0*double(l * (l +1.0))/ (i*i*h2);
+			ofile << fixed << setprecision(8) << k2 << "\t";
+		}
+		ofile << endl;
+	}
+	return 0;
+	
+	cout << "First l" << endl;
+	while(E < Emax + deltaE)
 	{	
-		for(int l = 0; l < lmax+1; l++)
+		cout << "E := " << E << endl;
+		sigmatot = 0;
+		// I calculate the value of k from the energy
+		double k = sqrt(2*E/pow(hbar,2));
+		// Print the wave function
+		ofile.open("LJ.txt");
+		for(int l = 6; l < 6+1; l++)
 		{
 			// Application of the algorithm for propagation of the wave function
 			Prop(N, l, E, h, y, VLJ);
 	
-			// Print the wave function
-			//ofile.open("LJ.txt");
-			//for(int m = 0; m < N+1; m++)
-			//{
-			//	ofile << fixed<< setprecision(20) << y[m] << "\t";
-			//}
-			//ofile.close();
+			for(int m = 0; m < N+1; m++)
+			{
+				ofile << fixed<< setprecision(20) << y[m] << "\t";
+			}
+			ofile << endl;
 	
 			// Now I calculate the phase shift
 			kappa = y[n1]*n2/(y[n2]*n1);
 	
 			deltal = atan2(kappa*Bessel(N, h, l, k*h*n2) - Bessel(N, h, l, k*h*n1), kappa*Neumann(N, h, l, k*h*n2) - Neumann(N, h, l, k*h*n1));
+			cout << "Delta l:= " << deltal << endl;
 			sigmatot += 4.0*pi/pow(k,2)*(2.0*l + 1.0)*pow(sin(deltal),2);
 		}
-		ofile << fixed << setprecision(5) << E << "\t" << sigmatot << endl;
+		ofile.close();
+		//ofile << fixed << setprecision(8) << E << "\t" << sigmatot << endl;
+		E += deltaE;
+	}
+	//ofile.close();
+	
+	return 0;
+	
+	lmax = 15;
+	cout << "All l" << endl;
+	ofile.open("Cross2.txt");
+	E = 0.001;
+	while(E < Emax + deltaE)
+	{	
+		cout << "E := " << E << endl;
+		sigmatot = 0;
+		// I calculate the value of k from the energy
+		double k = sqrt(2*E/pow(hbar,2));
+		// Print the wave function
+		//ofile.open("LJ.txt");
+		for(int l = 0; l < lmax+1; l++)
+		{
+			// Application of the algorithm for propagation of the wave function
+			Prop(N, l, E, h, y, VLJ);
+	
+			//for(int m = 0; m < N+1; m++)
+			//{
+			//	ofile << fixed<< setprecision(20) << y[m] << "\t";
+			//}
+			//ofile << endl;
+	
+			// Now I calculate the phase shift
+			kappa = y[n1]*n2/(y[n2]*n1);
+	
+			deltal = atan2(kappa*Bessel(N, h, l, k*h*n2) - Bessel(N, h, l, k*h*n1), kappa*Neumann(N, h, l, k*h*n2) - Neumann(N, h, l, k*h*n1));
+			cout << "Delta l:= " << deltal << endl;
+			sigmatot += 4.0*pi/pow(k,2)*(2.0*l + 1.0)*pow(sin(deltal),2);
+		}
+		//ofile.close();
+		ofile << fixed << setprecision(8) << E << "\t" << sigmatot << endl;
 		E += deltaE;
 	}
 	ofile.close();
+	
 	return 0;
 }
