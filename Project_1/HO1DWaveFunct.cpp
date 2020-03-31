@@ -91,7 +91,7 @@ void Prop_as(int N, double E, char c, double h, double * y)
 	delete[] k2;
 }
 
-double Amp(int N, double h, double * y) // Given a wave function, it calculate the normalization amplitude
+double Amp(int N, double h, double * y) // Given a wave function, it calculate the normalization amplitude using the Cavalieri-Simpson method
 {	
 	double A;
 	// I take the square of the wave function for each point
@@ -214,6 +214,7 @@ void Numerov(int N, double h, double E0, double Emax, double DeltaE, double * Es
 	delete[] y;
 }
 
+// Analytical wave functions for the 1D harmonic oscillator
 void Exact1D(int N, int n, double h, double * y)
 {
 	double x; // Auxiliary variables
@@ -378,7 +379,7 @@ int main()
 	{
 		cout << "Index i :=" <<  i << endl;
 		double * y  = new double[2*N[i] + 1]; // Array where I save Numerov
-		double * z  = new double[2*N[i] + 1]; // Array where I save Numerov
+		double * z  = new double[2*N[i] + 1]; // Array where I save the anlytical wave functions
 		for(int j = 0; j < 5; j++)
 		{
 			Exact1D(N[i], j, h[i], z);
@@ -390,8 +391,10 @@ int main()
 			{
 				Prop_as(N[i], Esaved[5*i+j], 'a', h[i], y);
 			}
+			// I calculate both normalisation amplitudes
 			A = Amp(N[i], h[i], y);
 			B = Amp(N[i], h[i], z);
+			// I calculate the error
 			errtmp = y[0]*z[0]+y[2*N[i]]*z[2*N[i]];
 			for(int m = 1; m < 2*N[i]; m++)
 			{

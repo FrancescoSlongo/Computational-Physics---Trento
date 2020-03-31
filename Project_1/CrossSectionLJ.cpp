@@ -14,6 +14,7 @@ using namespace std;
 
 ofstream ofile;
 
+// Constants of the problem
 double mu = 1.6536699e-27; // reduced mass in Kg
 double eps = 5.9e-3*1.60218e-19; // J
 double sigma = 3.18e-10; // m
@@ -134,7 +135,7 @@ int main(){
 	double Emax = 0.467; // Maximum value of energy scanned
 	double deltaE = 0.001; // Resolution of energy
 	double E = 0.467;
-	//ofile.open("Cross1.txt");
+	ofile.open("Cross1.txt");
 	
 	// First peak
 	//double Emax = 0.0824; // Maximum value of energy scanned
@@ -169,21 +170,23 @@ int main(){
 	double deltal; // Phase shift
 	double sigmatot = 0; // Total cross section
 	
-	ofile.open("LJ_EffV.txt");
-	double k2; // Value of k2
-	double h2 = h*h;
-	for(int l = 0; l < lmax+1; l++)
-		{
-		for(int i = 1; i < N+1; i++)
-		{
-			k2 = VLJ(i*h) + pow(hbar,2)/2.0*double(l * (l +1.0))/ (i*i*h2);
-			ofile << fixed << setprecision(8) << k2 << "\t";
-		}
-		ofile << endl;
-	}
-	return 0;
+	// Plot of the effective potential
+	//ofile.open("LJ_EffV.txt");
+	//double k2; // Value of k2
+	//double h2 = h*h;
+	//for(int l = 0; l < lmax+1; l++)
+	//	{
+	//	for(int i = 1; i < N+1; i++)
+	//	{
+	//		k2 = VLJ(i*h) + pow(hbar,2)/2.0*double(l * (l +1.0))/ (i*i*h2);
+	//		ofile << fixed << setprecision(8) << k2 << "\t";
+	//	}
+	//	ofile << endl;
+	//}
+	//return 0;
 	
-	cout << "First l" << endl;
+	
+	// Calculation of the cross section for l up to lmax=6
 	while(E < Emax + deltaE)
 	{	
 		cout << "E := " << E << endl;
@@ -191,35 +194,35 @@ int main(){
 		// I calculate the value of k from the energy
 		double k = sqrt(2*E/pow(hbar,2));
 		// Print the wave function
-		ofile.open("LJ.txt");
+		//ofile.open("LJ.txt");
 		for(int l = 6; l < 6+1; l++)
 		{
 			// Application of the algorithm for propagation of the wave function
 			Prop(N, l, E, h, y, VLJ);
-	
-			for(int m = 0; m < N+1; m++)
-			{
-				ofile << fixed<< setprecision(20) << y[m] << "\t";
-			}
-			ofile << endl;
+			// I save the wave function
+			//for(int m = 0; m < N+1; m++)
+			//{
+			//	ofile << fixed<< setprecision(20) << y[m] << "\t";
+			//}
+			//ofile << endl;
 	
 			// Now I calculate the phase shift
 			kappa = y[n1]*n2/(y[n2]*n1);
-	
 			deltal = atan2(kappa*Bessel(N, h, l, k*h*n2) - Bessel(N, h, l, k*h*n1), kappa*Neumann(N, h, l, k*h*n2) - Neumann(N, h, l, k*h*n1));
 			cout << "Delta l:= " << deltal << endl;
+			// Cross section
 			sigmatot += 4.0*pi/pow(k,2)*(2.0*l + 1.0)*pow(sin(deltal),2);
 		}
 		ofile.close();
 		//ofile << fixed << setprecision(8) << E << "\t" << sigmatot << endl;
 		E += deltaE;
 	}
-	//ofile.close();
+	ofile.close();
 	
 	return 0;
 	
+	// Now I calculate the the cross section for l up to lmax=15
 	lmax = 15;
-	cout << "All l" << endl;
 	ofile.open("Cross2.txt");
 	E = 0.001;
 	while(E < Emax + deltaE)
@@ -243,9 +246,9 @@ int main(){
 	
 			// Now I calculate the phase shift
 			kappa = y[n1]*n2/(y[n2]*n1);
-	
 			deltal = atan2(kappa*Bessel(N, h, l, k*h*n2) - Bessel(N, h, l, k*h*n1), kappa*Neumann(N, h, l, k*h*n2) - Neumann(N, h, l, k*h*n1));
 			cout << "Delta l:= " << deltal << endl;
+			// Cross section
 			sigmatot += 4.0*pi/pow(k,2)*(2.0*l + 1.0)*pow(sin(deltal),2);
 		}
 		//ofile.close();
