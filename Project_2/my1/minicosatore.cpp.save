@@ -123,7 +123,7 @@ void p_pos(void *xp)
 {
     for(int i=0;i<N;i++)
     {
-        printf(" %.6lf  ", ((double *) xp)[i]);
+        printf(" %.12lf  ", ((double *) xp)[i]);
     }
 }
 
@@ -157,14 +157,13 @@ int main()
     gsl_siman_solve(r, x_initial, gs_E, t_step, dist, p_pos, NULL, NULL, NULL, sizeof(double[N]), params);
 
     gsl_rng_free (r);
-
+    
     printf("best params: ");
     for(int i=0;i<N;i++)
     {
-        printf("%.12lf ",x_initial[i]);
+        printf("%.12lf ",a[i]);
     }
-    printf("\nwith energy: %.12lf", gs_E(x_initial));
-
+    printf("\n with energy")
     return 0;
 
 }
