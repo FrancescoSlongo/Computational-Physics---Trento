@@ -39,8 +39,9 @@ int main()
     gsl_matrix_set(S, 1, 2, .5);
     gsl_matrix_set(S, 2, 1, .5);
 
+    //diagonalize S
     gsl_vector * val = gsl_vector_alloc(3);
-    gsl_matrix * vec = gsl_matrix_alloc(3,3);
+    gsl_matrix * U = gsl_matrix_alloc(3,3);
 
     gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc(3);
 
@@ -49,16 +50,18 @@ int main()
 
     print_gsl_matrix(S,"S");
 
-    gsl_eigen_symmv(S, val, vec, w);
+    gsl_eigen_symmv(S, val, U, w);
     print_gsl_vector( val, "eigenvalues");
-    print_gsl_matrix(vec, "eigenvectors");
+    print_gsl_matrix(U, "eigenvectors");
     //print_gsl_matrix(S,"S");
+    gsl_eigen_symmv_sort(val, U, GSL_EIGEN_SORT_VAL_ASC);
 
-    for(int i=0;i<(*vec).size1;i++)
+    //Calculate s^-1/2 and then V
+    for(int i=0;i<(*U).size1;i++)
     {
-        gsl_matrix_set(tmp, i, i, sqrt(gsl_vector_get(val,i)));
+        gsl_matrix_set(tmp, i, i, 1./sqrt(gsl_vector_get(val,i)));
     }
-    gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,1.0, tmp, vec, 0.0, V);
+    gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,1.0, U, tmp, 0.0, V);
     print_gsl_matrix(V, "V");
 
     //define matrix H
@@ -68,12 +71,15 @@ int main()
     gsl_matrix_set(H, 1, 0, .5);
 
     gsl_matrix * Hp = gsl_matrix_alloc(3,3);
+    gsl_matrix_set_zero(tmp);
 
-    gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1., V, H, 0., tmp);
-    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1., tmp, V, 0., Hp);
+    //find the tranformed H'
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1., H, V, 0., tmp);
+    gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1., V, tmp, 0., Hp);
 
     print_gsl_matrix(Hp, "Hp");
 
+    //diagonlize H'
     gsl_matrix * Cp = gsl_matrix_alloc(3,3);
     gsl_vector * E = gsl_vector_alloc(3);
 
@@ -81,14 +87,25 @@ int main()
     print_gsl_vector( E, "eigenvalues");
     print_gsl_matrix(Cp, "eigenvectors");
 
+    //find the eigenvectors of the original H
     gsl_matrix * C = gsl_matrix_alloc(3,3);
 
     gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1., V, Cp, 0., C);
     print_gsl_matrix(C, "C");
 
+
+    //compare with the builtin solver
     gsl_matrix * X = gsl_matrix_alloc(3,3);
     gsl_vector * Y = gsl_vector_alloc(3);
     gsl_eigen_gensymmv_workspace * ww = gsl_eigen_gensymmv_alloc(3);
+
+    gsl_matrix_set_identity(S);
+    gsl_matrix_set(S, 1, 2, .5);
+    gsl_matrix_set(S, 2, 1, .5);
+
+    gsl_matrix_set_identity(H);
+    gsl_matrix_set(H, 0, 1, .5);
+    gsl_matrix_set(H, 1, 0, .5);
 
     gsl_eigen_gensymmv(H, S, Y, X, ww);
     print_gsl_vector(Y, "gsl eigenvalues");

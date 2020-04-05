@@ -14,7 +14,7 @@ using namespace std;
 int main (void)
 {
     const int n = 3; // Dimensionality
-    double alpha[n] = {0.5, 0.2}; // parameters
+    double alpha[n] = {0.112618, 0.399711, 2.00251}; // parameters
     double mat[n][n] = {{2, -1, 0}, {-1, 2, -1}, {0, -1, 2}}; // Just some test matrices (mat MUST BE POSITIVE DEFINITE)
     double mat2[n][n] = {{1, 3, 0}, {3, -1, 2}, {0, 2, -2}};
     gsl_matrix *Sqp = gsl_matrix_alloc(n, n); // Overlap
@@ -28,9 +28,9 @@ int main (void)
         {
             //val = M_PI/(alpha[i]+alpha[j]);
             val = mat[i][j];
-            gsl_matrix_set(Sqp, i, j, val);
+            gsl_matrix_set(Sqp, i, j, pow((M_PI/(alpha[i]+alpha[j])), 1.5));
             val = mat2[i][j];
-            gsl_matrix_set(Hqp, i, j, val);
+            gsl_matrix_set(Hqp, i, j, 3.0*pow(M_PI, 1.5)*alpha[i]*alpha[j] / pow(alpha[i]+alpha[j], 2.5) - 2.0 * M_PI / (alpha[i] + alpha[j]));
             cout << val << " ";
         }
         cout << endl;
