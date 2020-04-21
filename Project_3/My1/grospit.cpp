@@ -4,7 +4,7 @@
 using namespace std;
 
 const double X_MAX = 7.;
-const double h = 0.0001;
+const double h = 0.001;
 const int MESH_SIZE = ceil(X_MAX/h);
 double *yold = new double[MESH_SIZE];
 double *y = new double[MESH_SIZE];
@@ -65,10 +65,10 @@ double findGS(double precision)
             x2 = n;
             y1 = numerov(x1);
             y2 = numerov(x2);
-            while(abs(x2-x1)>precision&jj<1000000)
+            while(abs(x2-x1)>precision&jj<10000)
             {
-                xm = x2 - y2*(x1-x2)/(y1-y2);
-                //xm = (x1+x2)/2.;
+                //xm = x2 - y2*(x1-x2)/(y1-y2);
+                xm = (x1+x2)/2.;
                 ym = numerov(xm);
                 //cout<<"x1 "<<x1<<" x2 "<<x2<<" xm "<<xm;
                 //cout<<"   y1 "<<y1<<" y2 "<<y2<<" ym "<<ym<<endl;
@@ -111,7 +111,7 @@ double findGS(double precision)
 void GPsolve(double alpha)
 {
     findGS(1e-12);
-    for(int i=0;i<10;i++)
+    for(int i=0;i<1000;i++)
     {
         for(int j=0;j<MESH_SIZE;j++)
         {
@@ -132,7 +132,7 @@ inline double FDdet(double E)
 
     for(int i=0;i<MESH_SIZE;i++)
     {
-        f1 = (2. + h*h*pot(i, Na)-h*h*E)*f0 -  f_1;
+        f1 = (2. + 2.*h*h*pot(i, Na)-2.*h*h*E)*f0 - f_1;
         //cout<<"f_1 "<<f_1<<" f0 "<<f0<<" f1 "<<f1<<" pot "<<pot(i, Na)<<endl;
         f_1 = f0;
         f0 = f1;
@@ -151,6 +151,7 @@ double findGS_FD(double precision)
     double dE = .01;
     double Emax = 6.;
     double n;
+    double Na = 1.;
 
     tmp1 = FDdet(E0);
     for(n=E0+dE;n<Emax;n+=dE)
@@ -162,7 +163,7 @@ double findGS_FD(double precision)
             x2 = n;
             y1 = FDdet(x1);
             y2 = FDdet(x2);
-            while(abs(x2-x1)>precision&jj<1000000)
+            while(abs(x2-x1)>precision&jj<10000)
             {
                 xm = x2 - y2*(x1-x2)/(y1-y2);
                 //xm = (x2+x1)/2.;
@@ -202,13 +203,22 @@ double findGS_FD(double precision)
         tmp1 = tmp2;
     }
     if(n>=Emax){cout<<"No Energy Found"<<endl;}
+
+    //evaluate the WF
+    y[0] = h;
+    y[1] = y[0]*(2. + 2.*h*h*pot(1, Na)-2.*h*h*E);
+    for(int i=2;i<MESH_SIZE;i++)
+    {
+       y[i]= y[i-1]*(2. + 2.*h*h*pot(i, Na)-2.*h*h*E)-y[i-2];
+    }
+
     return E;
 }
 
 void GPsolve_FD(double alpha)
 {
     findGS_FD(1e-12);
-    for(int i=0;i<100;i++)
+    for(int i=0;i<10;i++)
     {
         for(int j=0;j<MESH_SIZE;j++)
         {
@@ -227,7 +237,7 @@ int main()
     FILE *out;
     out = fopen("output.txt", "w+");
     double *tmp;
-    double alpha = 0.5;
+    double alpha = 0.1;
 
     for(int i=0;i<MESH_SIZE;i++)
     {
@@ -237,7 +247,8 @@ int main()
     cout<<"h= "<<h<<" X_MAX = "<<X_MAX<<" alpha = "<<alpha<<endl;
     //cout<<numerov(2.5);
 
-    GPsolve_FD(alpha);
+    //GPsolve_FD(alpha);
+    findGS_FD(1e-17);
 
     for(int i=0;i<MESH_SIZE;i++)
     {
