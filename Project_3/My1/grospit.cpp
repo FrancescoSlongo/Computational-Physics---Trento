@@ -3,13 +3,14 @@
 #include<iomanip>
 using namespace std;
 
-const double X_MAX = 7.;
-const double h = 0.0001;
+const double X_MAX = 8.;
+const double h = 0.002;
 const int MESH_SIZE = ceil(X_MAX/h);
 double *ddy = new double[MESH_SIZE];
 double *y = new double[MESH_SIZE];
 double *rho = new double[MESH_SIZE];
-double Na = .01;
+double Na = 100.;
+double *Vdiff = new double[1000];
 
 inline double pot(int i, double Na)
 {
@@ -123,8 +124,8 @@ double findGS(double precision)
             y2 = numerov(x2);
             while(abs(x2-x1)>precision&jj<10000)
             {
-                xm = x2 - y2*(x1-x2)/(y1-y2);
-                //xm = (x1+x2)/2.;
+                //xm = x2 - y2*(x1-x2)/(y1-y2);
+                xm = (x1+x2)/2.;
                 ym = numerov(xm);
                 //cout<<"x1 "<<x1<<" x2 "<<x2<<" xm "<<xm;
                 //cout<<"   y1 "<<y1<<" y2 "<<y2<<" ym "<<ym<<endl;
@@ -169,7 +170,7 @@ void GPsolve(double alpha)
     double Vint;
     double mu = findGS(1e-13);
     double E = functional(&Vint);
-    for(int i=0;i<100;i++)
+    for(int i=0;i<400;i++)
     {
         for(int j=0;j<MESH_SIZE;j++)
         {
@@ -177,6 +178,7 @@ void GPsolve(double alpha)
         }
         cout<<i<<"| mu= "<<mu<<"   Diff = "<<mu-Vint-E<<endl;
         mu=findGS(1e-13);
+        Vdiff[i]=mu-Vint-E;
         E = functional(&Vint);
     }
 }
@@ -307,6 +309,7 @@ void GPsolve_FD(double alpha)
             rho[j] = alpha*y[j]*y[j]+(1-alpha)*rho[j];
         }
         cout<<i<<"| mu= "<<mu<<"   Diff = "<<mu-Vint-E<<endl;
+        Vdiff[i]=mu-Vint-E;
         mu=findGS_FD(1e-12);
         E = functional(&Vint);
     }
@@ -322,7 +325,7 @@ int main()
     FILE *out;
     out = fopen("output.txt", "w+");
     double *tmp;
-    double alpha = 1.;
+    double alpha = .09;
 
     for(int i=0;i<MESH_SIZE;i++)
     {
@@ -332,8 +335,8 @@ int main()
     }
     cout<<"h= "<<h<<" X_MAX = "<<X_MAX<<" alpha = "<<alpha<<" Na = "<<Na<<endl;
 
-    //GPsolve_FD(alpha);
-    cout<<"E = "<<fixed<<setprecision(20)<<findGS(1e-13)<<endl;
+    GPsolve(alpha);
+    //cout<<"E = "<<fixed<<setprecision(20)<<findGS(1e-13)<<endl;
 
     for(int i=0;i<MESH_SIZE;i++)
     {
@@ -342,9 +345,10 @@ int main()
 
     FILE *out2;
     out2 = fopen("potenziale.txt", "w+");
-    for(int j=0;j<MESH_SIZE;j++)
+    for(int j=0;j<1000;j++)
     {
-        fprintf(out2, "%.20lf ", pot(j, Na));
+        //fprintf(out2, "%.20lf ", pot(j, Na));
+        fprintf(out2, "%.20lf ", Vdiff[j]);
     }
     fclose(out2);
     // */
