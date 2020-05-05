@@ -143,7 +143,7 @@ int main()
     i = 0;
     while (i < iter && gradAbs > gradThre) // Minimization loop
     {
-        while (j < n) // Update position (skip i = 0 because j = n, for other i there's j = 0 at the end of this cycle)
+        while (j < n) // Update position (skip i = 0 because j = n, j = 0 is set at the end of this cycle)
         {
             alphav[j] -= step*grad[j];
             gsl_vector_set(x, j, alphav[j]);

@@ -81,6 +81,7 @@ int main (void)
     gsl_eigen_symmv_workspace *ws2 = gsl_eigen_symmv_alloc(n);
     gsl_eigen_symmv(newH, epsilon, Cp, ws2);
     gsl_eigen_symmv_free(ws2);
+    //gsl_eigen_symmv_sort(epsilon, Cp, GSL_EIGEN_SORT_VAL_ASC); // Sort them NOT! THIS IS WRONG
 
     // Calculate true eigenvectors
     gsl_matrix *C = gsl_matrix_alloc(n, n);
