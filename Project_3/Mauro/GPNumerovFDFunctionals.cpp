@@ -19,6 +19,7 @@ using namespace std;
 //using namespace Eigen;
 
 ofstream ofid;
+ofstream ofidAlpha;
 //ofstream ofidR;
 
 double Na, h, r0;
@@ -420,14 +421,16 @@ int main()
 	double Estep = .1;
 	double Ethre = 1e-13;
 	int maxCycles = 1e5;
-	double alpha = 0;
-	int scIter = 1;
+	double alpha = .8;
+	int scIter = 800;
 
-	Na = 1;
-	h = 1e-3;
+	Na = -.3;
+	h = 2e-3;
 
-	ofid.open("./GPwf.txt");
-	//ofidR.open("./GPwfR.txt");
+	//- 0.1, - 0.3, -0.5, - 0.56, - 0.56, - 0.57, - 0.60
+
+	ofid.open("./GPwfm3.txt");
+	ofidAlpha.open("./GPwfAlpham3.txt");
 
     r0 = h;
     Nmesh = (int)ceil(rmax / h);
@@ -445,9 +448,9 @@ int main()
     double Vifcn, mu, Efcn1, Efcn2;
     double etime;
 
-    M = gsl_matrix_alloc(Nmesh, Nmesh);
+    /*M = gsl_matrix_alloc(Nmesh, Nmesh);
     Evecs = gsl_matrix_alloc(Nmesh, Nmesh);
-    Evals = gsl_vector_alloc(Nmesh);
+    Evals = gsl_vector_alloc(Nmesh);*/
 
     double r;
     for (int i = 0; i < Nmesh; i++)
@@ -461,13 +464,13 @@ int main()
     {
         for (int k = 0; k < Nmesh; k++)
         {
-            r = k*h+r0;
             hRho[k] = alpha*pPsi[k]*pPsi[k] + (1.-alpha)*hRho[k];
         }
+        //Emin = 0.5*r0*r0 + Na*hRho[0]/r0/r0;
 
         clock_t begin = clock();
         mu = fpm(Emin, Estep, Ethre);
-        //mu = findif(1e-10, 1e-20, 1);
+        //mu = findif(1e-13, 1e-20, 0);
         //mu = GSLfindif();
         //mu = EIGENfindif();
         etime = (double)(clock() - begin) / CLOCKS_PER_SEC;
@@ -477,6 +480,7 @@ int main()
         Efcn1 = smpsEfcn(&Vifcn, Nmesh, h);
         Efcn2 = mu - Vifcn;
         cout << "Functionals diff: " << abs(Efcn1 - Efcn2) << endl;
+        ofidAlpha << fixed << setprecision(15) << i << "\t" << Efcn1 << "\t" << abs(Efcn1 - Efcn2) << endl;
     }
 
     for (int i = 0; i < Nmesh; i++)
@@ -484,8 +488,10 @@ int main()
         r = i*h+r0;
         ofid << fixed << setprecision(15) << r << " " << pPsi[i] << " " << 0.5*r*r + Na*hRho[i]/r/r << "\n";
     }
-    ofid << fixed << setprecision(15) << mu << endl << etime << endl;
+    //ofid << fixed << setprecision(15) << mu << endl << etime << endl;
 
 	ofid.close();
-	//ofidR.close();
+	ofidAlpha.close();
+
+	return 0;
 }
