@@ -116,7 +116,7 @@ void Numerov(int N, double h, double E0, double Emax, double DeltaE, double * Es
 {
 	// False point method method
 	// Variables used for the secant method
-	double * y = new double[2*N + 1]; // Value of the wave function at the point xi
+	double * y = new double[2*N + 1]; // Where I save the wave function
 	double E, E1, E2, Eaux; 
 	double y1, y2, ytmp, tmp;
 	double * Eout = new double[5];
