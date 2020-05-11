@@ -36,18 +36,17 @@ inline double pot(int i)
 double numerov(double E, double l)
 {
     double k_1 = 2*(E - pot(0))- l*(l+1)/h/h;
-    double k0 = 2*(E - pot(1))- l*(l+1)/h/h/4;
+    double k0 = 2*(E - pot(1))- l*(l+1)/h/h/4.;
     double k1;
 
-    y[0]=h;
-    y[1]=pow(2.*h,l);
-
+    y[0]=pow(h,l+1);
+    y[1]=pow(2.*h,l+1);
 
     for(int i=1;i<MESH_SIZE-1;i++)
     {
-        k1 = 2*(E - pot(i+1)) - l*(l+1)/h/(i+1)/h/(i+1);
+        k1 = 2.*(E - pot(i+1)) - l*(l+1)/h/(i+2)/h/(i+2);
 
-        y[i+1] = (y[i]*(2-5*h*h/6*k0)-y[i-1]*(1+h*h/12*k_1))/(1+h*h/12*k1);
+        y[i+1] = (y[i]*(2.-5.*h*h/6.*k0)-y[i-1]*(1.+h*h/12.*k_1))/(1.+h*h/12.*k1);
         k_1 = k0;
         k0 = k1;
     }
@@ -64,7 +63,7 @@ double bisezione(double E0, double E1, double precision, double l)
     x2 = E1;
     y1 = numerov(x1, l);
     y2 = numerov(x2, l);
-    while(abs(x2-x1)>precision&jj<10000)
+    while(abs(x2-x1)>precision && jj<10000)
     {
         xm = x2 - y2*(x1-x2)/(y1-y2);
         //xm = (x1+x2)/2.;
@@ -112,7 +111,7 @@ double findE(double E0, double Emax, double dE, double precision, int lmax, doub
         Vscan[l] = 0;
     }
 
-    while(n<Ne&&E<Emax)
+    while(n<Ne && E<Emax)
     {
         for(int l=0;l<=lmax;l++)
         {
@@ -131,7 +130,8 @@ double findE(double E0, double Emax, double dE, double precision, int lmax, doub
                 if(Vscan[i]==1)
                 {
                     tmp = bisezione(E, E+dE, precision, i);
-                    cout<<"l= "<<i<<" E= "<<tmp<<endl;
+                    //cout<<E<<" "<<E+dE<<endl;
+                    cout<<"l= "<<i<<" E= "<<setprecision(12)<<tmp<<endl;
                     n+=2*(2*i+1);
 
                     for(int j=0;j<10;j++)
@@ -221,13 +221,13 @@ void printWF(double *E, int *L)
 int main()
 {
     X_MAX = 15.;
-    h = 0.0001;
+    h = 0.001;
     MESH_SIZE = 2*ceil(X_MAX/h/2)+1;
     y = new double[MESH_SIZE];
     rho = new double[MESH_SIZE];
 
 
-    Ne = 20;
+    Ne = 40;
     rs = 3.93; //Na
     //rs = 4.86; //K
     Rc = rs*pow(Ne,1./3.);
@@ -243,10 +243,10 @@ int main()
         L[i]=0;
     }
 
-    int n=findE(-10, 0, 0.1, 1e-10, 4, E, L);
+    int n=findE(-10, 10, 0.1, 1e-13, 4, E, L);
     cout<<"total # electrons= "<<n<<endl;
 
-    printWF(E, L);
+    //printWF(E, L);
     /*int i=0;
     while(E[i]!=0)
     {
