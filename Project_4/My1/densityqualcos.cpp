@@ -10,17 +10,17 @@ int MESH_SIZE;
 double *y, *ddy, *rho, *Ucoul, *UcoulOld, *rhoOld;
 
 int Ne;
-double rs;
+double rse;
 double Rc;
 int n=0;
 
-/*inline double pot(int i)
+inline double pot(int i)
 {
     double r2 = h*(i+1)*h*(i+1);
     double p1 = UcoulOld[i] - pow(3./M_PI/M_PI*rhoOld[i], 1./3.);
-    if(rhoOld[i]>1e-20)
+    if(rhoOld[i]>1e-17)
     {
-        double rs = pow(3/4/M_PI/rhoOld[i], 1./3.);
+        double rs = pow(3./4./M_PI/rhoOld[i], 1./3.);
         double gamma = -0.103756;
         double b1 = 0.56371;
         double b2 = 0.27358;
@@ -34,13 +34,40 @@ int n=0;
     {
         return -Ne/h/(i+1)+p1;
     }
-}*/
+}
 
-inline double pot(int i)
+inline double pote(int i)
+{
+    double r2 = h*(i+1)*h*(i+1);
+    double p1 = UcoulOld[i] - pow(3./M_PI/M_PI*rhoOld[i], 1./3.);
+    cout<<"Coulomb "<<UcoulOld[i]<<endl;
+    cout<<"exchange "<<- pow(3./M_PI/M_PI*rhoOld[i], 1./3.)<<endl;
+    if(rhoOld[i]>1e-17)
+    {
+        double rs = pow(3./4./M_PI/rhoOld[i], 1./3.);
+        double gamma = -0.103756;
+        double b1 = 0.56371;
+        double b2 = 0.27358;
+        p1 += gamma*(1.+7.*b1/6.*sqrt(rs)+4*b2/3.*rs)/(1+b1*sqrt(rs)+b2*rs)/(1+b1*sqrt(rs)+b2*rs);
+        cout<<"correlation "<<gamma*(1.+7.*b1/6.*sqrt(rs)+4*b2/3.*rs)/(1+b1*sqrt(rs)+b2*rs)/(1+b1*sqrt(rs)+b2*rs)<<endl;
+    }
+    if(h*(i+1)<Rc)
+    {
+        cout<<"ext "<<0.5*Ne/(Rc*Rc*Rc)*(r2 - 3.*Rc*Rc)<<endl;
+        return 0.5*Ne/(Rc*Rc*Rc)*(r2 - 3.*Rc*Rc)+p1;
+    }
+    else
+    {
+        cout<<"ext "<<-Ne/h/(i+1)<<endl;
+        return -Ne/h/(i+1)+p1;
+    }
+}
+
+/*inline double pot(int i)
 {
     double r2 = h*(i+1)*h*(i+1);
     return 0.5*r2;
-}
+}*/
 
 void ddf() // O(h^4) second derivative
 {
@@ -65,8 +92,8 @@ void ddf() // O(h^4) second derivative
 
 double numerov(double E, double l)
 {
-    double k_1 = 2*(E - pot(0))- l*(l+1)/h/h;
-    double k0 = 2*(E - pot(1))- l*(l+1)/h/h/4.;
+    double k_1 = 2.*(E - pot(0))- l*(l+1)/h/h;
+    double k0 = 2.*(E - pot(1))- l*(l+1)/h/h/4.;
     double k1;
 
     y[0]=pow(h,l+1);
@@ -128,7 +155,7 @@ double bisezione(double E0, double E1, double precision, double l)
 double findE(double E0, double Emax, double dE, double precision, int lmax, vector<double> &Energ, vector<int> &L)
 {
     int Sscan = 0;
-    int n=0;
+    //int n=0;
     int *Vscan = new int[lmax];
     double *x1 = new double[lmax];
     double *x2 = new double[lmax];
@@ -186,7 +213,8 @@ double findE(double E0, double Emax, double dE, double precision, int lmax, vect
                 cout<<Vscan[i];
             }
             cout<<endl;*/
-            n+=findE(E, E+dE, dE/10., precision, lmax, Energ, L);
+            //n+=findE(E, E+dE, dE/10., precision, lmax, Energ, L);
+            findE(E, E+dE, dE/10., precision, lmax, Energ, L);
         }
 
         for(int l=0;l<=lmax;l++)
@@ -214,6 +242,7 @@ void calculateWF(const vector<double> &E, const vector<int> &L)
     for(int i=0;i<E.size();i++)
     {
         numerov(E[i], L[i]);
+        //cout<<"E= "<<E[i]<<" l= "<<L[i]<<endl;
 
         double norm = y[0]*y[0];
         //cout<<"norm "<<norm<<endl;
@@ -227,7 +256,15 @@ void calculateWF(const vector<double> &E, const vector<int> &L)
         for(int j=0;j<MESH_SIZE;j++)
         {
             y[j]/=sqrt(abs(norm));
-            rho[j]+=2*(2*L[i]+1)*y[j]*y[j]/4/M_PI/h/h/(j+1)/(j+1);
+            if(i<E.size()-1)
+            {
+                rho[j]+=2.*(2.*L[i]+1)*y[j]*y[j]/4./M_PI/h/h/(j+1)/(j+1);
+            }
+            else if (i==E.size()-1)
+            {
+                rho[j]+=(2.*(2.*L[i]+1)-n+Ne)*y[j]*y[j]/4./M_PI/h/h/(j+1)/(j+1);
+            }
+
         }
 
     }
@@ -259,7 +296,14 @@ void printWF(const vector<double> &E, const vector<int> &L)
         for(int j=0;j<MESH_SIZE;j++)
         {
             y[j]/=sqrt(abs(norm));
-            rho[j]+=2*(2*L[i]+1)*y[j]*y[j]/4/M_PI/h/h/(i+1)/(i+1);
+            if(i<E.size()-1)
+            {
+                rho[j]+=2.*(2.*L[i]+1)*y[j]*y[j]/4./M_PI/h/h/(j+1)/(j+1);
+            }
+            else if (i==E.size()-1)
+            {
+                rho[j]+=(2.*(2.*L[i]+1)-n+Ne)*y[j]*y[j]/4./M_PI/h/h/(j+1)/(j+1);
+            }
 
             fprintf(out, "%.20lf ", y[j]);
 
@@ -278,7 +322,7 @@ void printWF(const vector<double> &E, const vector<int> &L)
 void calcCoul(double *Ucoul)
 {
     double int1, int2;
-    /*for(int i=0;i<MESH_SIZE;i++)  CASI SPECIALI i=0,1, MS-1, MS  e pari
+    /*for(int i=2;i<MESH_SIZE-1;i++)  //CASI SPECIALI i=0,1, MS-1, MS  e pari
     {
         int1=rho[0]*h*h+4.*rho[1]*4.*h*h;
 
@@ -306,6 +350,23 @@ void calcCoul(double *Ucoul)
 
     for(int i=0;i<MESH_SIZE;i++)
     {
+        int1 = rho[0]*h*h;
+        for(int j=1;j<=i;j++)
+        {
+            int1 += 2*rho[j]*h*(j+1)*h*(j+1);
+        }
+        int1 -= rho[i]*h*h*(i+1)*(i+1);
+        int1 *= h/2.;
+        int1 /= h*(i+1);
+
+        int2 = rho[i]*h*(i+1);
+        for(int j=i;j<MESH_SIZE;j++)
+        {
+            int2 += 2.*rho[j]*h*(j+1);
+        }
+        int2 -= rho[MESH_SIZE-1]*h*MESH_SIZE;
+        int2 *= h/2.;
+        /*
         int1 = 0;
         for(int j=0;j<=i;j++)
         {
@@ -314,18 +375,18 @@ void calcCoul(double *Ucoul)
         int1/=h*(i+1);
 
         int2=0;
-        for(int j=i+1;j<MESH_SIZE;j++)
+        for(int j=i;j<MESH_SIZE;j++)
         {
             int2 += h*rho[j]*h*(j+1);
         }
-
+        */
         Ucoul[i]=4*M_PI*(int1+int2);
     }
 }
 
-double functionals(const vector<double> &E,const vector<int> &L)
+double functionals(const vector<double> &E,const vector<int> &L, int print)
 {
-    //first calculate E in order to use numerov with old Ucoul for kinetic term
+    //fit calculate E in order to use numerov with old Ucoul for kinetic term
     //calculate kinetic and correction functionals
     double intKin=0;
     double intCorr=0;
@@ -364,12 +425,21 @@ double functionals(const vector<double> &E,const vector<int> &L)
         intkk *= h/3;
         intcc *= h/3;
 
-        intKin -= (2*L[i]+1)*intkk;
-        //cout<<intkk<<endl;
-        intCorr += L[i]*(2*L[i]+1)*(L[i]+1)*intcc;
+        if(i<E.size()-1)
+        {
+            intKin -= (2*L[i]+1)*intkk;
+            //cout<<intkk<<endl;
+            intCorr += L[i]*(2*L[i]+1)*(L[i]+1)*intcc;
+        }
+        else if(i==E.size()-1)
+        {
+            intKin -= 0.5*(2*(2*L[i]+1)-n+Ne)*intkk;
+            //cout<<intkk<<endl;
+            intCorr += 0.5*L[i]*(2*(2*L[i]+1)-n+Ne)*(L[i]+1)*intcc;
+        }
     }
-    cout<<"Kinetic func= "<<setprecision(15)<<intKin<<endl;
-    cout<<"Correct func= "<<setprecision(15)<<intCorr<<endl;
+    if(print){cout<<"Kinetic func= "<<setprecision(15)<<intKin<<endl;}
+    if(print){cout<<"Correct func= "<<setprecision(15)<<intCorr<<endl;}
 
     //calculate direct coulomb functional
     double intCoul=Ucoul[0]*h*h*rho[0];
@@ -379,11 +449,11 @@ double functionals(const vector<double> &E,const vector<int> &L)
     }
     intCoul += Ucoul[MESH_SIZE-1]*rho[MESH_SIZE-1]*h*h*MESH_SIZE*MESH_SIZE;
     intCoul *= h/3.*2.*M_PI;
-    cout<<"Coulomb func= "<<setprecision(15)<<intCoul<<endl;
+    if(print){cout<<"Coulomb func= "<<setprecision(15)<<intCoul<<endl;}
 
     //calculate external potential functional
     double intExt=Ne/2/Rc/Rc/Rc*(h*h-3.*Rc*Rc)*rho[0]*h*h; //vext =-Ne/h/(i+1) for r>R =-Ne/2/Rc/Rc/Rc*(h*(i+1)*h*(i+1)*-3.*Rc*Rc)
-    for(int i=1;h*(i+1)<Rc;i++)
+    for(int i=1;h*(i+1)<=Rc;i++)
     {
         if(i % 2)
         {
@@ -400,7 +470,7 @@ double functionals(const vector<double> &E,const vector<int> &L)
     }
     intExt -= Ne*rho[MESH_SIZE-1]*h*MESH_SIZE;
     intExt *= h/3*4*M_PI;
-    cout<<"externa func= "<<setprecision(15)<<intExt<<endl;
+    if(print){cout<<"externa func= "<<setprecision(15)<<intExt<<endl;}
 
     //calculate exchange functional
     double intEpsX = -3./4.*pow(3./M_PI/M_PI*rho[0], 1./3.)*rho[0]*h*h;
@@ -417,7 +487,7 @@ double functionals(const vector<double> &E,const vector<int> &L)
     }
     intEpsX -= 3./4*pow(3./M_PI/M_PI*rho[MESH_SIZE-1], 1./3)*rho[MESH_SIZE-1]*h*h*MESH_SIZE*MESH_SIZE;
     intEpsX *= h/3*4*M_PI;
-    cout<<"Exchang func= "<<setprecision(15)<<intEpsX<<endl;
+    if(print){cout<<"Exchang func= "<<setprecision(15)<<intEpsX<<endl;}
 
     //calculate the correlation functional
     double gamma = -0.103756;
@@ -433,10 +503,10 @@ double functionals(const vector<double> &E,const vector<int> &L)
     rs = pow(3./4/M_PI/rho[MESH_SIZE-1], 1./3.);
     intEpsC += gamma/(1+b1*sqrt(rs)+b2*rs)*rho[MESH_SIZE-1]*h*h*MESH_SIZE*MESH_SIZE;
     intEpsC *= h/3.*4*M_PI;
-    cout<<"Correla func= "<<setprecision(15)<<intEpsC<<endl;
+    if(print){cout<<"Correla func= "<<setprecision(15)<<intEpsC<<endl;}
 
     double Efunc = intKin + intCorr + intExt + intCoul + intEpsX +intEpsC;
-    cout<<"totEner func= "<<setprecision(15)<<Efunc<<endl;
+    if(print){cout<<"totEner func= "<<setprecision(15)<<Efunc<<endl;}
 
 
     //now calculate the functional E_epsilon
@@ -444,9 +514,16 @@ double functionals(const vector<double> &E,const vector<int> &L)
     double E_eps = 0;
     for(int i=0;i<E.size();i++)
     {
-        E_eps += 2*(2*L[i]+1)*E[i];
+        if(i<E.size()-1)
+        {
+            E_eps += 2*(2*L[i]+1)*E[i];
+        }
+        else if(i==E.size()-1)
+        {
+            E_eps += (2*(2*L[i]+1)-n+Ne)*E[i];
+        }
     }
-    cout<<"numerov func= "<<setprecision(15)<<E_eps<<endl;
+    if(print){cout<<"numerov func= "<<setprecision(15)<<E_eps<<endl;}
 
     //calculate derivative of exchange functional
     double intDEpsX = - pow(rho[0], 4./3.)/4.*pow(3/M_PI/M_PI, 1./3.)*h*h;
@@ -463,7 +540,7 @@ double functionals(const vector<double> &E,const vector<int> &L)
     }
     intDEpsX -=pow(rho[MESH_SIZE-1],4./3.)/4.*pow(3/M_PI/M_PI, 1./3.)*h*h*MESH_SIZE*MESH_SIZE;
     intDEpsX *= h/3.*4*M_PI;
-    cout<<"DeExcha func= "<<setprecision(15)<<intDEpsX<<endl;
+    if(print){cout<<"DeExcha func= "<<setprecision(15)<<intDEpsX<<endl;}
 
     //calculate correlation functional
     rs = pow(3./4/M_PI/rho[0],1./3.);
@@ -483,18 +560,33 @@ double functionals(const vector<double> &E,const vector<int> &L)
     rs = pow(3./4./M_PI/rho[MESH_SIZE-1], 1./3.);
     intDEpsC += gamma/(1+b1*sqrt(rs)+b2*rs)*(b1/6.*sqrt(rs)+b2/3.*rs)/(1+b1*sqrt(rs)+b2*rs)*rho[MESH_SIZE-1]*h*h*MESH_SIZE*MESH_SIZE;
     intDEpsC *=h/3.*4*M_PI;
-    cout<<"DeCorre func= "<<setprecision(15)<<intDEpsC<<endl;
+    if(print){cout<<"DeCorre func= "<<setprecision(15)<<intDEpsC<<endl;}
 
     //sum up to find energy functional from eigenvalues of numerov
     E_eps -= intCoul + intDEpsX + intDEpsC;
-    cout<<"TotNuEn func= "<<setprecision(15)<<E_eps<<endl;
+    if(print){cout<<"TotNuEn func= "<<setprecision(15)<<E_eps<<endl;}
 
     return Efunc-E_eps;
 }
 
+void polarizability()
+{
+    int ic=ceil(Rc/h-1);
+    double dN = rho[ic]*(ic+1)*(ic+1)*h*h;
+    for(int i=ic+1;i<MESH_SIZE-1;i++)
+    {
+        (i % 2) ? dN += 4*rho[i]*(i+1)*(i+1)*h*h : dN += 2*rho[i]*(i+1)*(i+1)*h*h;
+    }
+    dN += rho[MESH_SIZE-1]*h*h*MESH_SIZE*MESH_SIZE;
+    dN *= h/3*4*M_PI;
+
+    cout<<"electron spillout= "<<setprecision(15)<<dN<<endl;
+    cout<<"polarizability= "<<setprecision(15)<<Rc*Rc*Rc*(1+dN/Ne)<<endl;
+}
+
 int main()
 {
-    X_MAX = 15.;
+    X_MAX = 27.5;
     h = 0.001;
     MESH_SIZE = 2*ceil(X_MAX/h/2)+1;
     y = new double[MESH_SIZE];
@@ -504,7 +596,6 @@ int main()
     Ucoul = new double[MESH_SIZE];
     UcoulOld = new double[MESH_SIZE];
     double *tmp;
-    double diff;
 
     for(int i=0;i<MESH_SIZE;i++)
     {
@@ -516,49 +607,61 @@ int main()
 
 
     Ne = 40;
-    rs = 3.93; //Na
+    rse = 3.93; //Na
     //rs = 4.86; //K
-    Rc = rs*pow(Ne,1./3.);
-    double alpha = 0.2;
+    Rc = rse*pow(Ne,1./3.);
+    double alpha = 0.1;
 
-    cout<<"h= "<<h<<" X_MAX= "<<X_MAX<<" MESH= "<<MESH_SIZE<<" rs= "<<rs<<" Ne= "<<Ne<<" Rc= "<<Rc<<" alpha= "<<alpha<<endl;
+    cout<<"h= "<<h<<" X_MAX= "<<X_MAX<<" MESH= "<<MESH_SIZE<<" rs= "<<rse<<" Ne= "<<Ne<<" Rc= "<<Rc<<" alpha= "<<alpha<<endl;
 
     vector<double> E;
-    E.reserve(10);
+    E.reserve(20);
     vector<int> L;
-    L.reserve(10);
+    L.reserve(20);
 
     //Self consistent procedure
-    for(int i=0;i<1;i++)
+    int steps=110;
+    double *diff= new double[steps];
+    for(int i=0;i<steps;i++)
     {
         //reset the energy levels
         E.clear();
         L.clear();
 
         //calculate new rho
-        findE(-10, 10, 0.1, 1e-17, 4, E, L);
+        //n=findE(-10, 10, 0.1, 1e-13, 6, E, L);
+        n=0;
+        findE(-5, 0.1, 0.1, 1e-13, 4, E, L);
         calculateWF(E, L);
-
-        //mixing
-        //for(int j=0;j<MESH_SIZE;j++)
-        //{
-        //    rho[j]=alpha*rho[j]+(alpha-1)*rhoOld[j];
-        //}
+        cout<<"total # electrons= "<<n<<endl;
 
         //calculate functionals
         calcCoul(Ucoul);
-        diff = functionals(E, L);
-        cout<<"func diff= "<<diff<<endl;
+        diff[i] = functionals(E, L, 0);
+        cout<<"step "<<i<< " func diff= "<<diff[i]<<endl;
 
-        //subtitute the old stuff with the new stuff for a new step
-        /*tmp = UcoulOld;
-        UcoulOld = Ucoul;
-        Ucoul = tmp;
-
-        tmp = rhoOld;
-        rhoOld = rho;
-        rho = tmp;*/
+        //mixing
+        if(i!=steps-1)
+        {
+            for(int j=0;j<MESH_SIZE;j++)
+            {
+                rhoOld[j]=(1-alpha)*rhoOld[j]+alpha*rho[j];
+                UcoulOld[j]=(1-alpha)*UcoulOld[j]+alpha*Ucoul[j];
+            }
+        }
     }
+    functionals(E, L, 1);
+    polarizability();
+
+    /*for(int i=0;i<MESH_SIZE;i++)
+    {
+        rho[i]=exp(-h*h*(i+1)*(i+1))/4./M_PI;
+    }
+    calcCoul(Ucoul);
+    for(int i=0;i<MESH_SIZE;i++)
+    {
+        cout<<setprecision(15)<<Ucoul[i]-sqrt(M_PI)/4/h/(i+1)*erf(h*(i+1))<<"  ";
+    }*/
 
 
     //final energies and save WFs on file
@@ -567,6 +670,12 @@ int main()
         cout<<"l= "<<L[i]<<" E= "<<setprecision(15)<<E[i]<<endl;
     }
     cout<<"total # electrons= "<<n<<endl;
-
     printWF(E, L);
+    FILE *output;
+    output=fopen("out.txt","w+");
+    for(int i=0;i<steps;i++)
+    {
+        fprintf(output,"%.20lf ",diff[i]);
+    }
+    fclose(output);
 }
