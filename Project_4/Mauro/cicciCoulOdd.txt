@@ -1,0 +1,78 @@
+void evalUcoul(void)
+{
+    double ans = 0;
+    double r;
+    for (int index = 0; index < Nmesh; index+=2)
+    {
+        // pPsi[index] at r = r0 + index*h, need to get up to this coordinate for first integral
+        ans = 0;
+        if (index == 0)
+        {
+            ans = hRho[0]/r0/4/M_PI; // realRho*r0
+        }
+        else
+        {
+            for (int i = 2; i < index+1; i++)
+            {
+                r = r0 + i*h;
+                (i % 2) ? ans += hRho[i]/M_PI : ans += 0.5*hRho[i]/M_PI;
+                //             = 4*realRho*r*r       = 2*realRho[i]*r*r;
+            }
+            ans -= hRho[2]/4/M_PI;
+            ans += 1.125*(3*hRho[0]/4/M_PI + 3*hRho[1]/4/M_PI + hRho[2]/4/M_PI);
+            ans /= (r0+index*h);
+            ans -= hRho[index]/4/M_PI/(r0+index*h);
+        }
+
+        if (index == Nmesh - 1)
+        {
+            ans += 3*hRho[Nmesh-1]/4/M_PI/(r0+(Nmesh-1)*h);
+        }
+        else
+        {
+            for (int i = index; i < Nmesh; i++)
+            {
+                r = r0 + i*h;
+                (i % 2) ? ans += hRho[i]/M_PI/r : ans += 0.5*hRho[i]/M_PI/r;
+            }
+            ans -= hRho[index]/4/M_PI/(r0+index*h);
+            ans -= hRho[Nmesh-1]/4/M_PI/(r0+(Nmesh-1)*h);
+        }
+
+        ans *= h/3;
+        Ucoul[index] = 4*M_PI*ans;
+    }
+
+    for (int index = 1; index < Nmesh; index+=2)
+    {
+        ans = 0;
+        for (int i = 0; i < index+1; i++) // Use fact that actually 0-th point is zero
+        {
+            r = r0 + i*h;
+            (i % 2) ? ans += 0.5*hRho[i]/M_PI : ans += hRho[i]/M_PI;
+        }
+        ans /= (r0+index*h);
+        ans -= hRho[index]/4/M_PI/(r0+index*h); // Same as moving this one line above and add r^2 instead of r only
+
+        if (index == Nmesh - 2)
+        {
+            ans += hRho[index]/4/M_PI/(r0 + index*h) + hRho[index + 1]/4/M_PI/(r0 + (index+1)*h);
+        }
+        else
+        {
+            for (int i = index; i < Nmesh - 3; i++) // Simpson missing last 3 points
+            {
+                r = r0 + i*h;
+                (i % 2) ? ans += 0.5*hRho[i]/M_PI/r : ans += hRho[i]/M_PI/r;
+            }
+            ans -= hRho[index]/4/M_PI/(r0+index*h);
+            ans -= hRho[Nmesh - 4]/4/M_PI/(r0+(Nmesh-4)*h);
+
+            // Simpson 3/8 rule, though with 9/8 cause at the end do *h/3
+            ans += 1.125*(hRho[Nmesh-1]/4/M_PI/(r0+(Nmesh-1)*h) + 3*hRho[Nmesh-2]/4/M_PI/(r0+(Nmesh-2)*h) + 3*hRho[Nmesh-3]/4/M_PI/(r0+(Nmesh-3)*h) + hRho[Nmesh-4]/4/M_PI/(r0+(Nmesh-4)*h));
+        }
+
+        ans *= h/3;
+        Ucoul[index] = 4*M_PI*ans;
+    }
+}
