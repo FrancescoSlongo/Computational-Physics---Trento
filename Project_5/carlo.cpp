@@ -107,21 +107,12 @@ void init_matrix(){
     //cout<<gsl_matrix_get(B,0,0)<<" "<<gsl_matrix_get(dxB,0,0)<<" "<<gsl_matrix_get(dyB,0,0)<<" "<<gsl_matrix_get(ddB,0,0)<<endl;
 }
 
-void calculateT(double *output){
-    gsl_permutation *pa = gsl_permutation_alloc(dim1);
-    gsl_permutation *pb = gsl_permutation_alloc(dim2);
+void calculateT(double *output, gsl_matrix *Maa, gsl_matrix *Mbb, gsl_permutation *pa, gsl_permutation *pb){
     gsl_matrix *Ma = gsl_matrix_alloc(dim1, dim1);
     gsl_matrix *Mb = gsl_matrix_alloc(dim2, dim2);
-    int *sa, *sb;
 
-    gsl_matrix_memcpy(Ma, A);
-    gsl_matrix_memcpy(Mb, B);
-    //cout<<gsl_matrix_get(A,0,0)<<" "<<gsl_matrix_get(A,1,0)<<endl;
-    //cout<<gsl_matrix_get(A,0,1)<<" "<<gsl_matrix_get(A,1,1)<<endl;
-    gsl_linalg_LU_decomp(Ma, pa, sa);
-    //cout<<gsl_matrix_get(Ma,0,0)<<" "<<gsl_matrix_get(Ma,1,0)<<endl;
-    //cout<<gsl_matrix_get(Ma,0,1)<<" "<<gsl_matrix_get(Ma,1,1)<<endl;
-    gsl_linalg_LU_decomp(Mb, pb, sb);
+    gsl_matrix_memcpy(Ma, Maa);
+    gsl_matrix_memcpy(Mb, Mbb);
 
     gsl_matrix *Ia = gsl_matrix_alloc(dim1, dim1);
     gsl_matrix *Ib = gsl_matrix_alloc(dim2, dim2);
@@ -142,8 +133,8 @@ void calculateT(double *output){
         trdxb += gsl_matrix_get(Mb, i, i);
     }
 
-    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, dyA, Ia, 0, Ma);
-    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, dyB, Ib, 0, Mb);
+    gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1, dyA, Ia, 0, Ma);
+    gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1, dyB, Ib, 0, Mb);
 
     double trdya = 0, trdyb = 0;
 
@@ -155,8 +146,8 @@ void calculateT(double *output){
         trdyb += gsl_matrix_get(Mb, i, i);
     }
 
-    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, ddA, Ia, 0, Ma);
-    gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1, ddB, Ib, 0, Mb);
+    gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1, ddA, Ia, 0, Ma);
+    gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1, ddB, Ib, 0, Mb);
 
     double trdda = 0, trddb = 0;
 
@@ -196,7 +187,32 @@ int main(){
     yb = new double[dim2] {1, 1};
 
     init_matrix();
-    calculateT(out);
+
+    gsl_permutation *pa = gsl_permutation_alloc(dim1);
+    gsl_permutation *pb = gsl_permutation_alloc(dim2);
+    gsl_matrix *Ma = gsl_matrix_alloc(dim1, dim1);
+    gsl_matrix *Mb = gsl_matrix_alloc(dim2, dim2);
+    int sa, sb;
+
+    gsl_matrix_memcpy(Ma, A);
+    gsl_matrix_memcpy(Mb, B);
+    //cout<<gsl_matrix_get(A,0,0)<<" "<<gsl_matrix_get(A,1,0)<<endl;
+    //cout<<gsl_matrix_get(A,0,1)<<" "<<gsl_matrix_get(A,1,1)<<endl;
+    gsl_linalg_LU_decomp(Ma, pa, &sa);
+    //cout<<gsl_matrix_get(Ma,0,0)<<" "<<gsl_matrix_get(Ma,1,0)<<endl;
+    //cout<<gsl_matrix_get(Ma,0,1)<<" "<<gsl_matrix_get(Ma,1,1)<<endl;
+    gsl_linalg_LU_decomp(Mb, pb, &sb);
+
+    calculateT(out, Ma, Mb, pa, pb);
     out[2] = pot();
     cout<<"T= "<<out[0]<<" Tjf= "<<out[1]<<" V= "<<out[2]<<endl;
+
+    double detai, detbi;
+
+    detai = gsl_linalg_LU_det(Ma, sa);
+    detbi = gsl_linalg_LU_det(Mb, sb);
+
+    double delta,
+
+
 }
